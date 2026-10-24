@@ -1,0 +1,33 @@
+## @file
+#  Registers the embedded payload FAT image as a RAM disk.
+##
+[Defines]
+  INF_VERSION    = 0x00010005
+  BASE_NAME      = KebabRamDisk
+  FILE_GUID      = 3C4D5E6F-7A8B-49C1-9D2E-0F1A2B3C4D5E
+  MODULE_TYPE    = DXE_DRIVER
+  VERSION_STRING = 1.0
+  ENTRY_POINT    = KebabRamDiskEntry
+
+[Sources]
+  KebabRamDisk.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  UefiLib
+  MemoryAllocationLib
+  BaseLib
+
+[Guids]
+  gEfiVirtualDiskGuid
+
+[Protocols]
+  gEfiFirmwareVolume2ProtocolGuid
+  gEfiRamDiskProtocolGuid
+
+[Depex]
+  gEfiRamDiskProtocolGuid
