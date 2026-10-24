@@ -38,6 +38,7 @@ ReadChunk (
   EFI_FV_FILE_ATTRIBUTES  Attributes;
   UINT32                  AuthenticationStatus;
   UINTN                   Size;
+  VOID                    *Dest;
 
   Size   = 0;
   Status = Fv->ReadFile (Fv, Guid, NULL, &Size, &Type, &Attributes, &AuthenticationStatus);
@@ -45,7 +46,9 @@ ReadChunk (
     return 0;
   }
 
-  Status = Fv->ReadFile (Fv, Guid, Destination, &Size, &Type, &Attributes, &AuthenticationStatus);
+  // ReadFile takes VOID **: it writes the destination pointer through it.
+  Dest   = Destination;
+  Status = Fv->ReadFile (Fv, Guid, &Dest, &Size, &Type, &Attributes, &AuthenticationStatus);
   if (EFI_ERROR (Status)) {
     return 0;
   }
