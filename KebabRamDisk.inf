@@ -1,4 +1,4 @@
-﻿## @file
+## @file
 #  Registers the payload FAT image embedded in the firmware device as a RAM disk.
 ##
 [Defines]
@@ -23,6 +23,7 @@
   MemoryAllocationLib
   BaseLib
   BaseMemoryLib
+  DebugLib
 
 [Guids]
   gEfiVirtualDiskGuid
