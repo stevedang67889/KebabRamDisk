@@ -1,5 +1,5 @@
 ## @file
-#  Registers the payload FAT image embedded in the firmware device as a RAM disk.
+#  Publishes the payload image embedded in the firmware device as a block device.
 ##
 [Defines]
   INF_VERSION    = 0x00010005
@@ -13,23 +13,19 @@
   KebabRamDisk.c
 
 [Packages]
-  KebabRamDisk/KebabRamDisk.dec
   MdePkg/MdePkg.dec
 
 [LibraryClasses]
   UefiDriverEntryPoint
   UefiBootServicesTableLib
   UefiLib
-  MemoryAllocationLib
   BaseLib
   BaseMemoryLib
   DebugLib
 
-[Guids]
-  gEfiVirtualDiskGuid
-
 [Protocols]
-  gEfiRamDiskProtocolGuid
+  gEfiBlockIoProtocolGuid
+  gEfiDevicePathProtocolGuid
 
 [Depex]
-  gEfiRamDiskProtocolGuid
+  TRUE

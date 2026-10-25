@@ -1,58 +1,50 @@
 # KebabRamDisk
 
-UEFI DXE driver for the OnePlus 8T (kebab, SM8250): registers the payload FAT
-image that is embedded in the firmware volume as a RAM disk, so UniXNU can find
-`\EFI\UniXNU\unixnu.toml` without a storage driver.
+A UniXNU UEFI driver that publishes the firmware device's payload region as a
+read-only block device on the OnePlus 8T (kebab, SM8250).
 
-Part of the [UniXNU](https://github.com/UniXNU) ecosystem. Used by
-[UniXNU-kebab](https://github.com/stevedang67889/UniXNU-kebab) as
-`drivers/KebabRamDisk`.
+## Why a block device and not a RAM disk
 
-## Why
+The firmware image (`SILICIUM_UEFI.fd`) carries the UniXNU payload as a raw FDF
+region at offset `0x00300000`. Three approaches were tried on the device:
 
-On the kebab port the vendor `UFSDxe` does not produce a block device (it
-asserts with `Device Error` at `UFS.c:1004`, and with `EnableUfsIOC = 1` it
-fails silently), so no `SimpleFileSystem` handle exists and UniXNU falls back to
-its built-in menu. Until UFS works, the payload volume travels with the
-firmware:
-
-1. `kebab.fdf` packs the payload FAT image into `FVMAIN_COMPACT` as a raw
-   `FILE FREEFORM` (uncompressed, memory mapped at the FD base).
-2. This driver reads that file out of the firmware volume and registers the
-   buffer through `EFI_RAM_DISK_PROTOCOL`.
-3. `FatPkg` mounts it, and UniXNU scans it for its configuration.
-
-The firmware volume grows by the size of the payload (64 MiB for kebab); the
-boot partition is 96 MiB, so this fits with room to spare.
-
-## Requirements
-
-| Requirement | Why |
+| Approach | Result |
 | --- | --- |
-| `MdeModulePkg/Universal/Disk/RamDiskDxe` | provides `EFI_RAM_DISK_PROTOCOL` |
-| `FatPkg/EnhancedFatDxe` | mounts the FAT volume |
-| The payload file GUID in `KebabRamDisk.c` | must match the `FILE FREEFORM` GUID in the FDF |
+| Payload as an FFS file inside the FV | The FFS size field is 24-bit, so a 64 MiB payload is impossible; forcing it produced a CPU exception |
+| `RamDiskDxe` + `EFI_RAM_DISK_PROTOCOL` | `Register` returned `EFI_INVALID_PARAMETER`: the protocol requires page-allocated memory, which this driver cannot obtain after DXE |
+| This driver: `EFI_BLOCK_IO_PROTOCOL` over the FD region | Works. PartitionDxe and FatPkg mount the volume and UniXNU reads `unixnu.toml` from it |
 
-## Integration
+## How it works
 
-`kebab.fdf`:
+1. The FDF places the payload FAT image at `0x00300000` in the FD, and the FD is
+   loaded at `0x9FC00000`, so the payload is reachable at `0x9FC00000 + 0x00300000`.
+2. `KebabRamDiskEntryPoint` installs a `EFI_BLOCK_IO_PROTOCOL` on a new handle
+   with a vendor device path.
+3. `ReadBlocks`/`WriteBlocks` map LBAs straight onto that region (512-byte
+   blocks, read-only, `WriteBlocks` returns `EFI_WRITE_PROTECTED`).
+
+The device path matters: `PartitionDxe` only binds handles that carry one, and
+without it the volume never appears even though the block I/O is installed.
+
+## Build
+
+The driver is built as part of the kebab Mu-Silicium platform:
 
 ```
-  FILE FREEFORM = 7F3C2B1A-9D4E-4C21-8B7A-1E2D3C4B5A60 {
-    SECTION RAW = <path to the payload FAT image>
-  }
+[Components]
+  kebabPkg/Driver/KebabRamDisk/KebabRamDisk.inf
 ```
 
-`kebab.dsc`:
+Add `Platforms/OnePlus/kebabPkg/Driver/KebabRamDisk` to the tree and map the
+package in `PACKAGES_PATH` (`kebabPkg/Driver/KebabRamDisk` must be the parent
+directory of `KebabRamDisk.inf`).
 
-```
-  KebabRamDisk/KebabRamDisk.inf
-```
+## Evidence
 
-The image must be an MBR disk with one FAT32 partition and 512-byte sectors,
-because `RamDiskDxe` reports `BlockSize = 512` and `PartitionDxe` only creates a
-partition child when it finds a partition table.
+With this driver the UniXNU boot menu lists the entry generated from
+`board.toml` (`kebab first boot: source 4K XNU to console`) instead of the
+built-in fallback menu, which proves the payload volume was found and parsed.
 
 ## License
 
-BSD-2-Clause-Patent, matching UniXNU and Mu-Silicium.
+BSD-2-Clause-Patent.
