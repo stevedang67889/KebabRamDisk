@@ -36,27 +36,27 @@ KebabRamDiskEntry (
   UINT64                 Size;
 
   Payload = (UINT8 *)(KEBAB_FD_BASE + KEBAB_PAYLOAD_OFFSET);
-  DEBUG ((DEBUG_ERROR, L"[KebabRamDisk] entry, payload at %p\n", Payload));
+  DEBUG ((DEBUG_ERROR, "[KebabRamDisk] entry, payload at %p\n", Payload));
 
   // Reject a missing or non-MBR image instead of registering garbage.
   if ((Payload[510] != 0x55) || (Payload[511] != 0xAA)) {
-    DEBUG ((DEBUG_ERROR, L"[KebabRamDisk] no MBR signature, nothing registered\n"));
+    DEBUG ((DEBUG_ERROR, "[KebabRamDisk] no MBR signature, nothing registered\n"));
     return EFI_SUCCESS;
   }
 
   Start   = *(UINT32 *)(Payload + 446 + 8);
   Sectors = *(UINT32 *)(Payload + 446 + 12);
   Size    = (Start + Sectors) * 512;
-  DEBUG ((DEBUG_ERROR, L"[KebabRamDisk] partition starts at %u, %u sectors, %u bytes\n", Start, Sectors, Size));
+  DEBUG ((DEBUG_ERROR, "[KebabRamDisk] partition starts at %u, %u sectors, %u bytes\n", Start, Sectors, Size));
 
   if ((Size == 0) || (Size > (64 * 1024 * 1024))) {
-    DEBUG ((DEBUG_ERROR, L"[KebabRamDisk] implausible size, nothing registered\n"));
+    DEBUG ((DEBUG_ERROR, "[KebabRamDisk] implausible size, nothing registered\n"));
     return EFI_SUCCESS;
   }
 
   Buffer = AllocatePool ((UINTN)Size);
   if (Buffer == NULL) {
-    DEBUG ((DEBUG_ERROR, L"[KebabRamDisk] out of memory\n"));
+    DEBUG ((DEBUG_ERROR, "[KebabRamDisk] out of memory\n"));
     return EFI_SUCCESS;
   }
 
@@ -64,11 +64,11 @@ KebabRamDiskEntry (
 
   Status = gBS->LocateProtocol (&gEfiRamDiskProtocolGuid, NULL, (VOID **)&RamDisk);
   if (EFI_ERROR (Status)) {
-    DEBUG ((DEBUG_ERROR, L"[KebabRamDisk] RamDisk protocol missing: %r\n", Status));
+    DEBUG ((DEBUG_ERROR, "[KebabRamDisk] RamDisk protocol missing: %r\n", Status));
     return EFI_SUCCESS;
   }
 
   Status = RamDisk->Register ((UINT64)(UINTN)Buffer, Size, &gEfiVirtualDiskGuid, NULL, NULL);
-  DEBUG ((DEBUG_ERROR, L"[KebabRamDisk] %u bytes registered: %r\n", Size, Status));
+  DEBUG ((DEBUG_ERROR, "[KebabRamDisk] %u bytes registered: %r\n", Size, Status));
   return EFI_SUCCESS;
 }
